@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -10,23 +10,18 @@ import {
   SafeAreaView,
   Platform,
 } from 'react-native';
-
-const VerificationScreen = ({ initialProps, onClose }) => {
-  let { referenceNumber } = initialProps || {};
-
+import {Buffer} from 'buffer';
+const VerificationScreen = ({initialProps, onClose}) => {
+  let {referenceNumber} = initialProps || {};
   if (Platform.OS === 'ios') {
     referenceNumber = initialProps.referenceID;
   }
   const [verificationData, setVerificationData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  console.log(initialProps.referenceID, 'referenceNumber inside android');
-
   const username = 'enrollment';
   const password = '@ISPL@082023@innotrust';
-  const credentials = btoa(`${username}:${password}`);
-
+  const credentials = Buffer.from(`${username}:${password}`).toString('base64');
   useEffect(() => {
     if (referenceNumber) {
       const fetchVerificationData = async () => {
@@ -36,16 +31,15 @@ const VerificationScreen = ({ initialProps, onClose }) => {
             {
               method: 'GET',
               headers: {
-                'Authorization': `Basic ${credentials}`,
+                Authorization: `Basic ${credentials}`,
                 'Content-Type': 'application/json',
               },
-            }
+            },
           );
-
           if (!response.ok) {
-            throw new Error(`Error: ${response.status} ${response.statusText}`);
+            throw new Error(`Error: ${response.status}
+${response.statusText}`);
           }
-
           const data = await response.json();
           setVerificationData(data);
         } catch (err) {
@@ -54,11 +48,9 @@ const VerificationScreen = ({ initialProps, onClose }) => {
           setLoading(false);
         }
       };
-
       fetchVerificationData();
     }
   }, [referenceNumber]);
-
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -67,7 +59,6 @@ const VerificationScreen = ({ initialProps, onClose }) => {
       </View>
     );
   }
-
   if (error) {
     return (
       <SafeAreaView style={styles.containerSafe}>
@@ -80,11 +71,9 @@ const VerificationScreen = ({ initialProps, onClose }) => {
       </SafeAreaView>
     );
   }
-
-  const getBase64Uri = (base64String) => {
+  const getBase64Uri = base64String => {
     return base64String ? `data:image/jpeg;base64,${base64String}` : null;
   };
-
   const frontData =
     verificationData?.data?.Front_OCR_Data?.id_analysis?.front || {};
   const backData =
@@ -92,13 +81,11 @@ const VerificationScreen = ({ initialProps, onClose }) => {
   const score = verificationData?.data?.Score || 'N/A';
   const verificationStatus =
     verificationData?.data?.Verification_Status || 'N/A';
-
   const handleClose = () => {
     if (onClose) {
       onClose();
     }
   };
-
   return (
     <SafeAreaView style={styles.containerSafe}>
       <ScrollView style={styles.container}>
@@ -108,7 +95,6 @@ const VerificationScreen = ({ initialProps, onClose }) => {
               <Text style={styles.title}>Reference Number:</Text>
               <Text style={styles.value}>{referenceNumber}</Text>
             </View>
-
             <View style={styles.card}>
               <Text style={styles.statusTitle}>Verification Status:</Text>
               <Text
@@ -117,47 +103,42 @@ const VerificationScreen = ({ initialProps, onClose }) => {
                   verificationStatus === 'SUCCESS'
                     ? styles.success
                     : styles.failed,
-                ]}
-              >
+                ]}>
                 {verificationStatus}
               </Text>
             </View>
-
             <View style={styles.card}>
               <Text style={styles.title}>Score:</Text>
               <Text style={styles.value}>{score}</Text>
             </View>
-
             {/* FRONT ID DETAILS */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Front ID Details</Text>
               {Object.entries(frontData).map(([key, value]) => (
                 <View key={key} style={styles.row}>
-                  <Text style={styles.label}>{key.replace(/_/g, ' ')}:</Text>
+                  <Text style={styles.label}>{key.replace(/_/g, '')}:</Text>
                   <Text style={styles.value}>{value || 'N/A'}</Text>
                 </View>
               ))}
             </View>
-
             {/* BACK ID DETAILS */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Back ID Details</Text>
               {Object.entries(backData).map(([key, value]) => (
                 <View key={key} style={styles.row}>
-                  <Text style={styles.label}>{key.replace(/_/g, ' ')}:</Text>
+                  <Text style={styles.label}>{key.replace(/_/g, '')}:</Text>
                   <Text style={styles.value}>{value || 'N/A'}</Text>
                 </View>
               ))}
             </View>
-
             {/* IMAGE DISPLAY */}
             <View style={styles.imageSection}>
               {[
-                { label: 'Front ID Image', key: 'Front_ID_Image' },
-                { label: 'Back ID Image', key: 'Back_ID_Image' },
-                { label: 'Front Extracted Image', key: 'Extracted_Image' },
-                { label: 'Selfie Image', key: 'Selfie_Image' },
-              ].map(({ label, key }) => (
+                {label: 'Front ID Image', key: 'Front_ID_Image'},
+                {label: 'Back ID Image', key: 'Back_ID_Image'},
+                {label: 'Front Extracted Image', key: 'Extracted_Image'},
+                {label: 'Selfie Image', key: 'Selfie_Image'},
+              ].map(({label, key}) => (
                 <View key={key} style={styles.imageCard}>
                   <Text style={styles.imageLabel}>{label}</Text>
                   {verificationData.data?.[key] ? (
@@ -177,7 +158,6 @@ const VerificationScreen = ({ initialProps, onClose }) => {
                 </View>
               ))}
             </View>
-
             {/* Navigate Button */}
             <TouchableOpacity style={styles.button} onPress={handleClose}>
               <Text style={styles.buttonText}>Close</Text>
@@ -190,11 +170,11 @@ const VerificationScreen = ({ initialProps, onClose }) => {
     </SafeAreaView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 10,
+    paddingVertical: 5,
     backgroundColor: '#FFFFFF',
   },
   containerSafe: {
@@ -347,10 +327,10 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 5,
     alignItems: 'center',
-    width: '90%', // Increase button width
-    position: 'absolute', // Position at bottom
-    bottom: 20, // Adjust as needed
-    alignSelf: 'center', // Center horizontally
+    width: '90%',
+    position: 'absolute',
+    bottom: 10,
+    alignSelf: 'center',
   },
   closeButtonText: {
     color: '#FFFFFF',
@@ -366,5 +346,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
 export default VerificationScreen;

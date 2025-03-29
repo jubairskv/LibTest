@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  openSelectionScreen, showEkycUI
+import {
+  openSelectionScreen,
+  showEkycUI,
 } from '@innovitegranpm/innotrust-rn-eth';
 import {
   StyleSheet,
@@ -8,24 +9,43 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Text,
-  Platform,
   View,
 } from 'react-native';
-import { NativeEventEmitter, NativeModules } from 'react-native';
+import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import VerificationScreen from './Verification';
 import DeviceInfo from 'react-native-device-info';
 
 const { LivelinessDetectionBridge } = NativeModules;
+const Inno = NativeModules.Inno;
+const innoEmitter =
+  Platform.OS === 'ios' && Inno ? new NativeEventEmitter(Inno) : null;
 
-export default function App({ initialProps }: { initialProps: any }) {
+export default function Ekyc({ initialProps }: { initialProps: any }) {
+  console.log('initialProps', initialProps);
   const { referenceNumber, sessionTimeoutStatus } = initialProps || {};
-  console.log(sessionTimeoutStatus,"session")
-  console.log(referenceNumber,"referenceNumber")
-  const [referenceID, setReferenceID] = useState<string | null>(null);
+
+  const [referenceID, setReferenceID] = useState<string | null>('');
   const [showVerification, setShowVerification] = useState(!!referenceNumber);
   const [clicked, setClicked] = useState<boolean>(false);
-  const [sessionTimeout, setSessionTimeout] = useState<boolean>(Boolean(sessionTimeoutStatus));
-  console.log(sessionTimeout,"SessionTimeout")
+  const [sessionTimeout, setSessionTimeout] = useState<boolean>(
+    Boolean(sessionTimeoutStatus),
+  );
+
+  //session timeoutstatus for ios
+  const [timeoutStatus, setTimeoutStatus] = useState<string | null>('');
+
+  function generateReferenceID(): string {
+    // Get the current timestamp in seconds.
+    const timestamp = Math.floor(Date.now() / 1000);
+    // Generate a random number between 1,000,000 and 9,999,999.
+    const randomNum =
+      Math.floor(Math.random() * (9999999 - 1000000 + 1)) + 1000000;
+    // Pad the random number to 8 digits (if needed).
+    const randomNumString = randomNum.toString().padStart(8, '0');
+    return `INNOVERIFYIOS${timestamp}${randomNumString}`;
+  }
+
+  const reference = generateReferenceID();
 
   const generateReferenceNumber = () => {
     try {
@@ -48,8 +68,6 @@ export default function App({ initialProps }: { initialProps: any }) {
       if (referenceId.length > 32) {
         referenceId = referenceId.substring(0, 32);
       }
-
-      console.log('Generated reference number:', referenceId);
       return referenceId;
     } catch (error) {
       console.error('Failed to generate reference number:', error.message);
@@ -57,11 +75,16 @@ export default function App({ initialProps }: { initialProps: any }) {
     }
   };
 
+  const [referenceVerification, setReferenceVerification] = useState<
+    string | null
+  >(null);
+
   const startEkyc = async () => {
+    setReferenceVerification(reference);
     if (Platform.OS === 'ios') {
       setClicked(true);
       try {
-        await showEkycUI();
+        await showEkycUI(reference);
       } catch (error) {
         Alert.alert('Error', 'Failed to launch eKYC');
       }
@@ -69,7 +92,7 @@ export default function App({ initialProps }: { initialProps: any }) {
     if (Platform.OS === 'android') {
       setShowVerification(true);
       try {
-        const referenceNumber = generateReferenceNumber(); // Call the function directly
+        const referenceNumber = generateReferenceNumber();
         const apkName = await DeviceInfo.getApplicationName();
         await openSelectionScreen(referenceNumber, apkName);
         console.log('Selection screen opened');
@@ -85,18 +108,35 @@ export default function App({ initialProps }: { initialProps: any }) {
       const eventEmitter = new NativeEventEmitter(LivelinessDetectionBridge);
 
       const subscription = eventEmitter.addListener(
-        'onReferenceIDReceived',
-        (event) => {
+        'sessionTimeoutStatus',
+        event => {
           console.log(
             '✅ Reference ID received from native:',
-            event.referenceID
+            event.sessionTimeout,
           );
-          setReferenceID(event.referenceID);
-        }
+          setReferenceID(event.sessionTimeout);
+          setTimeoutStatus(event.sessionTimeout);
+        },
+      );
+
+      const subscriptionTimeout = innoEmitter.addListener(
+        'onScreenTimeout',
+        value => {
+          console.log('Screen timed out with value:', value);
+          // Handle timeout event here (e.g., reset state or navigate)
+          setClicked(false);
+          setReferenceID(null);
+
+          Alert.alert(
+            'Timeout',
+            'The native screen was closed due to inactivity.',
+          );
+        },
       );
 
       return () => {
         subscription.remove();
+        subscriptionTimeout.remove();
       };
     }, []);
   }
@@ -105,7 +145,8 @@ export default function App({ initialProps }: { initialProps: any }) {
     setShowVerification(false);
     setClicked(false);
     setReferenceID(null);
-    setSessionTimeout(false); // Reset session timeout state
+    setTimeoutStatus('null');
+    setSessionTimeout(false);
   };
 
   const handleCloseSessionTimeout = () => {
@@ -119,8 +160,12 @@ export default function App({ initialProps }: { initialProps: any }) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Session Timeout. Please try again.</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={handleCloseSessionTimeout}>
+          <Text style={styles.errorText}>
+            Session Timeout. Please try again.
+          </Text>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={handleCloseSessionTimeout}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
         </View>
@@ -128,11 +173,10 @@ export default function App({ initialProps }: { initialProps: any }) {
     );
   }
 
-  if (showVerification || sessionTimeout === 0 ||  (referenceID && clicked  ) ) {
-    console.log("Navigation to verification")
+  if (showVerification || sessionTimeout === 0 || timeoutStatus === '0') {
     return Platform.OS === 'ios' ? (
       <VerificationScreen
-        initialProps={{ referenceID }}
+        initialProps={{ referenceID: referenceVerification }}
         onClose={handleCloseVerification}
       />
     ) : (
@@ -142,7 +186,10 @@ export default function App({ initialProps }: { initialProps: any }) {
       />
     );
   }
-  if (!referenceID && !clicked) {
+  if (
+    (reference != 'null' && timeoutStatus != 0) ||
+    (!referenceID && !clicked)
+  ) {
     return (
       <SafeAreaView style={styles.container}>
         <TouchableOpacity style={styles.button} onPress={startEkyc}>
@@ -166,31 +213,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 18,
-    color: 'red',
-    marginBottom: 20,
-  },
-  closeButton: {
-    backgroundColor: '#007BFF',
-    padding: 15,
-    borderRadius: 5,
-    alignItems: 'center',
-    width: '90%', // Increase button width
-    position: 'absolute', // Position at bottom
-    bottom: 20, // Adjust as needed
-    alignSelf: 'center', // Center horizontally
-  },  
-  closeButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
