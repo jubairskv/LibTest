@@ -77,5 +77,39 @@ def kotlin_version = getExtOrDefault("kotlinVersion")
 dependencies {
   implementation "com.facebook.react:react-android"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+
+  def camerax_version = "1.4.0"
+  implementation "androidx.camera:camera-core:${camerax_version}"
+  implementation "androidx.camera:camera-camera2:${camerax_version}"
+  implementation "androidx.camera:camera-lifecycle:${camerax_version}"
+  implementation "androidx.camera:camera-view:${camerax_version}"
+
+
+   // Android KTX for Activity
+    implementation "androidx.activity:activity-ktx:1.7.0"
+
+    // Android KTX for Fragment (if you're using Fragments)
+    implementation "androidx.fragment:fragment-ktx:1.6.0"
+
+
+
+
+   //API HTTPS
+   implementation "com.squareup.okhttp3:okhttp:4.9.0"
+   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4"
+
+
+     // Lifecycle and Core KTX
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.annotation:annotation:1.9.1")
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2"
+    implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.6.2"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.6.1"
+
+
+    //google ml kit
+    implementation 'com.google.mlkit:face-detection:16.1.7'
+
+    implementation "androidx.cardview:cardview:1.0.0"
 }
 
